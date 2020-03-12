@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+enum Status { none, complete, pass }
+
 class TodoScreen extends StatefulWidget {
   @override
   _TodoScreenState createState() => _TodoScreenState();
@@ -29,7 +31,7 @@ class _TodoScreenState extends State<TodoScreen> {
           ),
         ],
       ),
-      body: TodoList(),
+      body: TodoListView(),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           debugPrint('click add button');
@@ -66,25 +68,63 @@ class AppBarBottomView extends StatelessWidget {
 //  -> 이유: 소스코드를 보면 아래와 같이 설명 되어있음
 //    * large number of item and separator children
 //    * because the builders are only called for the children that are actually visible.
-class TodoList extends StatefulWidget {
+class TodoListView extends StatefulWidget {
   @override
-  _TodoListState createState() => _TodoListState();
+  _TodoListViewState createState() => _TodoListViewState();
 }
 
-class _TodoListState extends State<TodoList> {
+class _TodoListViewState extends State<TodoListView> {
+  List<Todo> _todolist = [];
+
+  @override
+  void initState() {
+    Todo _t = Todo('todolist 만들기', Status.none, DateTime.now());
+    Todo _t2 = Todo('todolist 만들기', Status.pass, DateTime.now());
+    Todo _t3 = Todo('todolist 만들기', Status.complete, DateTime.now());
+    _todolist.addAll([_t, _t2, _t3]);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
       itemBuilder: (context, index) {
+        Todo _todo = _todolist[index];
         return ListTile(
-          title: Text('$index sheep'),
-          trailing: Icon(Icons.change_history),
+          title: Text('$index, ${_todo.content}, ${_todo.status}'),
+          trailing: Icon(Todo.iconData(_todo.status)),
         );
       },
       separatorBuilder: (_, index) {
         return Divider();
       },
-      itemCount: 5,
+      itemCount: _todolist.length,
     );
+  }
+}
+
+class Todo {
+  final String content;
+  final Status status;
+  final DateTime datetime;
+
+  Todo(this.content, this.status, this.datetime);
+
+  Map<String, dynamic> toMap() {
+    return {
+      'content': content,
+      'status': status,
+      'DateTime': datetime,
+    };
+  }
+
+  static IconData iconData(Status status) {
+    switch (status) {
+      case Status.none:
+        return Icons.change_history;
+      case Status.complete:
+        return Icons.check;
+      case Status.pass:
+        return Icons.arrow_forward;
+    }
   }
 }
