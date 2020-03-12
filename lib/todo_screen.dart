@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqlite_api.dart';
 
-enum Status { none, complete, pass }
+enum Status { none, done, pass }
 
 class TodoScreen extends StatefulWidget {
   @override
@@ -8,6 +11,34 @@ class TodoScreen extends StatefulWidget {
 }
 
 class _TodoScreenState extends State<TodoScreen> {
+  Database _db;
+  List<Todo> _todolist = <Todo>[];
+
+  @override
+  void initState() {
+    initData();
+  }
+
+  void initData() async {
+    _db = await DB.open();
+    _todolist = await getTodoList();
+    debugPrint('###### todo' + _todolist.toString());
+  }
+
+  Future<List<Todo>> getTodoList() async {
+    List<Map<String, dynamic>> _result = await _db.query('todo');
+    return List.generate(_result.length, (i) {
+      Map<String, dynamic> _td = _result[i];
+      return Todo(_td['content'], _td['status'], _td['dueDate']);
+    });
+  }
+
+  @override
+  void dispose() {
+    _db.close();
+    debugPrint('---> dispose database');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,15 +105,7 @@ class TodoListView extends StatefulWidget {
 }
 
 class _TodoListViewState extends State<TodoListView> {
-  List<Todo> _todolist = [];
-
-  @override
-  void initState() {
-    Todo _t = Todo('todolist 만들기', Status.none, DateTime.now());
-    Todo _t2 = Todo('todolist 만들기', Status.pass, DateTime.now());
-    Todo _t3 = Todo('todolist 만들기', Status.complete, DateTime.now());
-    _todolist.addAll([_t, _t2, _t3]);
-  }
+  final List<Todo> _todolist;
 
   @override
   Widget build(BuildContext context) {
@@ -105,15 +128,15 @@ class _TodoListViewState extends State<TodoListView> {
 class Todo {
   final String content;
   final Status status;
-  final DateTime datetime;
+  final DateTime dueDate;
 
-  Todo(this.content, this.status, this.datetime);
+  Todo(this.content, this.status, this.dueDate);
 
   Map<String, dynamic> toMap() {
     return {
       'content': content,
       'status': status,
-      'DateTime': datetime,
+      'dueDate': dueDate,
     };
   }
 
@@ -121,10 +144,32 @@ class Todo {
     switch (status) {
       case Status.none:
         return Icons.change_history;
-      case Status.complete:
+      case Status.done:
         return Icons.check;
       case Status.pass:
         return Icons.arrow_forward;
     }
+  }
+}
+
+class DB {
+  static Future<Database> open() async {
+    debugPrint('---> open database');
+    String _path = join(await getDatabasesPath(), 'todo.db');
+    return openDatabase(
+      _path,
+      version: 1,
+      onCreate: (db, version) {
+        debugPrint('---> on create database');
+        return db.execute(
+          '''create table todo(
+            no integer primary key autoincrement
+            ,content text not null
+            ,status text default 0
+            ,due_date text 
+          )''',
+        );
+      },
+    );
   }
 }
