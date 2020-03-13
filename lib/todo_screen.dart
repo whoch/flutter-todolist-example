@@ -11,34 +11,6 @@ class TodoScreen extends StatefulWidget {
 }
 
 class _TodoScreenState extends State<TodoScreen> {
-  Database _db;
-  List<Todo> _todolist = <Todo>[];
-
-  @override
-  void initState() {
-    initData();
-  }
-
-  void initData() async {
-    _db = await DB.open();
-    _todolist = await getTodoList();
-    debugPrint('###### todo' + _todolist.toString());
-  }
-
-  Future<List<Todo>> getTodoList() async {
-    List<Map<String, dynamic>> _result = await _db.query('todo');
-    return List.generate(_result.length, (i) {
-      Map<String, dynamic> _td = _result[i];
-      return Todo(_td['content'], _td['status'], _td['dueDate']);
-    });
-  }
-
-  @override
-  void dispose() {
-    _db.close();
-    debugPrint('---> dispose database');
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,8 +19,10 @@ class _TodoScreenState extends State<TodoScreen> {
           'my todo list',
           style: TextStyle(color: Colors.grey[900]),
         ),
-        // Only widgets that implement [PreferredSizeWidget]
-        // can be used at the bottom of an app bar
+        /* # memo:
+        Only widgets that implement [PreferredSizeWidget]
+        can be used at the bottom of an app bar
+        */
         bottom: PreferredSize(
           child: AppBarBottomView(),
           preferredSize: Size.fromHeight(100),
@@ -105,7 +79,26 @@ class TodoListView extends StatefulWidget {
 }
 
 class _TodoListViewState extends State<TodoListView> {
-  final List<Todo> _todolist;
+  Database _db;
+  List<Todo> _todolist = <Todo>[];
+
+  @override
+  void initState() {
+    initData();
+  }
+
+  void initData() async {
+    _db = await DB.open();
+    insert();
+    _todolist = await select();
+    debugPrint('###### todo' + _todolist.toString());
+  }
+
+  @override
+  void dispose() {
+    _db.close();
+    debugPrint('---> dispose database');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,20 +116,46 @@ class _TodoListViewState extends State<TodoListView> {
       itemCount: _todolist.length,
     );
   }
+
+  Future<List<Todo>> select() async {
+    List<Map<String, dynamic>> _result = await _db.query('t_todo');
+    return List.generate(_result.length, (i) {
+      Map<String, dynamic> _td = _result[i];
+      return Todo(
+        _td['content'],
+        status: _td['status'],
+        dueDttm: _td['dueDttm'],
+      );
+    });
+  }
+
+  void insert() {
+    Todo _td = Todo('insert todo');
+    _db.insert('t_todo', _td.toResultMap());
+  }
 }
 
 class Todo {
-  final String content;
-  final Status status;
-  final DateTime dueDate;
+  String content;
+  Status status;
+  DateTime dueDttm;
 
-  Todo(this.content, this.status, this.dueDate);
+  Todo(String content, {Status status, DateTime dueDttm}) {
+    this.content = content;
+    this.status = status ?? Status.none;
+    this.dueDttm = dueDttm ?? DateTime.now();
+  }
 
-  Map<String, dynamic> toMap() {
+  @override
+  String toString() {
+    return 'Todo{content: $content, status: $status, dueDttm: $dueDttm}';
+  }
+
+  Map<String, dynamic> toResultMap() {
     return {
       'content': content,
-      'status': status,
-      'dueDate': dueDate,
+      'status': status.index,
+      'due_dttm': dueDttm.millisecondsSinceEpoch,
     };
   }
 
@@ -156,17 +175,18 @@ class DB {
   static Future<Database> open() async {
     debugPrint('---> open database');
     String _path = join(await getDatabasesPath(), 'todo.db');
+    await deleteDatabase(_path);
     return openDatabase(
       _path,
       version: 1,
       onCreate: (db, version) {
         debugPrint('---> on create database');
         return db.execute(
-          '''create table todo(
+          '''create table t_todo(
             no integer primary key autoincrement
             ,content text not null
             ,status text default 0
-            ,due_date text 
+            ,due_dttm integer default (datetime('now', 'localtime'))
           )''',
         );
       },
