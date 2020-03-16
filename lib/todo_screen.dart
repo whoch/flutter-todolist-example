@@ -4,6 +4,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 enum Status { none, done, pass }
+enum Mode { init, add, edit }
 
 class TodoScreen extends StatefulWidget {
   @override
@@ -11,7 +12,13 @@ class TodoScreen extends StatefulWidget {
 }
 
 class _TodoScreenState extends State<TodoScreen> {
-  String _mode = 'init';
+  Mode _mode;
+
+  @override
+  void initState() {
+    _mode = Mode.init;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,43 +35,17 @@ class _TodoScreenState extends State<TodoScreen> {
         centerTitle: true,
         actions: <Widget>[
           FlatButton(
-            onPressed: () {},
+            onPressed: () {
+              setState(() {
+                _mode = Mode.edit;
+              });
+            },
             child: Text('편집', style: TextStyle(fontSize: 18)),
           ),
         ],
       ),
-      body: TodoListView(_mode),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          debugPrint('click add button');
-          showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              builder: (BuildContext context) {
-                return Container(
-                  padding: EdgeInsets.only(
-                      bottom: MediaQuery.of(context).viewInsets.bottom),
-                  child: TextField(
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: '무엇을 할까요?',
-                      suffixIcon: Icon(Icons.ac_unit),
-                      border: InputBorder.none,
-                    ),
-                  ),
-                );
-              });
-          setState(() {
-            _mode = 'add';
-            debugPrint('add!');
-          });
-        },
-        child: Icon(
-          Icons.add,
-          color: Colors.grey[900],
-        ),
-        backgroundColor: Colors.white,
-      ),
+      resizeToAvoidBottomPadding: false,
+      body: TodoListView(mode: _mode),
     );
   }
 }
@@ -92,8 +73,9 @@ class AppBarBottomView extends StatelessWidget {
 //    * large number of item and separator children
 //    * because the builders are only called for the children that are actually visible.
 class TodoListView extends StatefulWidget {
-  final String mode;
-  TodoListView(this.mode);
+  final Mode mode;
+
+  TodoListView({@required this.mode});
 
   @override
   _TodoListViewState createState() => _TodoListViewState();
@@ -101,77 +83,144 @@ class TodoListView extends StatefulWidget {
 
 class _TodoListViewState extends State<TodoListView> {
   Database _db;
+  FocusNode _focusNode;
   List<Todo> _todolist = <Todo>[];
+  Todo _target;
 
   @override
   void initState() {
     initData();
+    _focusNode = FocusNode();
+    debugPrint('--> init State!');
   }
 
   void initData() async {
     _db = await DB.open();
-    insert();
     _todolist = await select();
-    debugPrint('### init & select todo: ' + _todolist.toString());
   }
 
   @override
   void dispose() {
     _db.close();
+    _focusNode.dispose();
     debugPrint('---> dispose database');
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      itemBuilder: (context, index) {
-        Todo _todo = _todolist[index];
-        return ListTile(
-          title: Text(
-              '<${widget.mode}> $index, ${_todo.content}, ${_todo.status}'),
-          trailing: Icon(Todo.iconData(_todo.status)),
-        );
-      },
-      separatorBuilder: (_, index) {
-        return Divider();
-      },
-      itemCount: _todolist.length,
+    debugPrint('--> build! ${widget.mode}');
+    return Column(
+      children: <Widget>[
+        TextField(
+          focusNode: _focusNode,
+          onSubmitted: (String value) async {
+            switch (widget.mode) {
+              case Mode.init:
+                await insert(content: value);
+                break;
+              case Mode.edit:
+                await update(content: value, currentNo: _target.no);
+                _target = null;
+                break;
+              case Mode.add:
+                // 추후 bottomButton에서 구현할 때 여기로 insert 이동
+                break;
+            }
+            List<Todo> result = await select();
+            setState(() {
+              _todolist = result;
+            });
+          },
+        ),
+        SizedBox(
+          height: 400,
+          child: ListView.separated(
+            itemBuilder: (context, index) {
+              Todo _todo = _todolist[index];
+              return ListTile(
+                title: widget.mode == Mode.init
+                    ? Text(
+                        '<${widget.mode}> ${_todo.no}, ${_todo.content}, ${_todo.status}')
+                    : Text('dddddddddddddd'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    IconButton(
+                      icon: Icon(Todo.iconData(_todo.status)),
+                      onPressed: () {
+                        debugPrint('status click: $index, ${_todo.no}');
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.edit),
+                      onPressed: () {
+                        debugPrint('edit click: $index, ${_todo.no}');
+                        _target = _todo;
+                        _focusNode.requestFocus();
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.delete_outline),
+                      onPressed: () {
+                        debugPrint('delete click: $index, ${_todo.no}');
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+            separatorBuilder: (_, index) {
+              return Divider();
+            },
+            itemCount: _todolist.length,
+          ),
+        ),
+      ],
     );
   }
 
   Future<List<Todo>> select() async {
     List<Map<String, dynamic>> _todoList = await _db.query('t_todo');
+    debugPrint('select -> $_todoList');
     return List.generate(_todoList.length, (i) {
       Map<String, dynamic> _map = _todoList[i];
       return Todo.fromMap(_map);
     });
   }
 
-  void insert() {
-    Todo _td = Todo('insert하기');
+  void insert({@required String content}) {
+    Todo _td = Todo(content);
     _db.insert('t_todo', _td.toMap());
+  }
+
+  void update({@required String content, @required int currentNo}) {
+    Todo _td = Todo(content, no: currentNo);
+    _db.update('t_todo', _td.toMap());
   }
 }
 
 class Todo {
+  int no;
   String content;
   Status status;
   DateTime dueDttm;
 
-  Todo(String content, {Status status, DateTime dueDttm}) {
+  Todo(String content, {int no, Status status, DateTime dueDttm}) {
     this.content = content;
+    this.no = no ?? null;
     this.status = status ?? Status.none;
     this.dueDttm = dueDttm ?? DateTime.now();
   }
 
   @override
   String toString() {
-    return 'Todo{content: $content, status: $status, dueDttm: $dueDttm}';
+    return 'Todo{no: $no, content: $content, status: $status, dueDttm: $dueDttm}';
   }
 
   // convert type: text, integer, integer
   Map<String, dynamic> toMap() {
     return {
+      'no': no,
       'content': content,
       'status': status.index,
       'due_dttm': dueDttm.millisecondsSinceEpoch,
@@ -180,6 +229,7 @@ class Todo {
 
   // convert type: String, Status, DateTime
   Todo.fromMap(Map<String, dynamic> map) {
+    no = map['no'];
     content = map['content'];
     status = Status.values[map['status']];
     dueDttm = DateTime.fromMillisecondsSinceEpoch(map['due_dttm']);
