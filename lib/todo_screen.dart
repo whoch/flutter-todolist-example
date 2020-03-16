@@ -1,7 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:sqflite/sqlite_api.dart';
 
 enum Status { none, done, pass }
 
@@ -11,6 +11,7 @@ class TodoScreen extends StatefulWidget {
 }
 
 class _TodoScreenState extends State<TodoScreen> {
+  String _mode = 'init';
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -19,10 +20,6 @@ class _TodoScreenState extends State<TodoScreen> {
           'my todo list',
           style: TextStyle(color: Colors.grey[900]),
         ),
-        /* # memo:
-        Only widgets that implement [PreferredSizeWidget]
-        can be used at the bottom of an app bar
-        */
         bottom: PreferredSize(
           child: AppBarBottomView(),
           preferredSize: Size.fromHeight(100),
@@ -36,10 +33,31 @@ class _TodoScreenState extends State<TodoScreen> {
           ),
         ],
       ),
-      body: TodoListView(),
+      body: TodoListView(_mode),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           debugPrint('click add button');
+          showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              builder: (BuildContext context) {
+                return Container(
+                  padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).viewInsets.bottom),
+                  child: TextField(
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: '무엇을 할까요?',
+                      suffixIcon: Icon(Icons.ac_unit),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                );
+              });
+          setState(() {
+            _mode = 'add';
+            debugPrint('add!');
+          });
         },
         child: Icon(
           Icons.add,
@@ -74,6 +92,9 @@ class AppBarBottomView extends StatelessWidget {
 //    * large number of item and separator children
 //    * because the builders are only called for the children that are actually visible.
 class TodoListView extends StatefulWidget {
+  final String mode;
+  TodoListView(this.mode);
+
   @override
   _TodoListViewState createState() => _TodoListViewState();
 }
@@ -91,7 +112,7 @@ class _TodoListViewState extends State<TodoListView> {
     _db = await DB.open();
     insert();
     _todolist = await select();
-    debugPrint('###### todo' + _todolist.toString());
+    debugPrint('### init & select todo: ' + _todolist.toString());
   }
 
   @override
@@ -106,7 +127,8 @@ class _TodoListViewState extends State<TodoListView> {
       itemBuilder: (context, index) {
         Todo _todo = _todolist[index];
         return ListTile(
-          title: Text('$index, ${_todo.content}, ${_todo.status}'),
+          title: Text(
+              '<${widget.mode}> $index, ${_todo.content}, ${_todo.status}'),
           trailing: Icon(Todo.iconData(_todo.status)),
         );
       },
@@ -118,20 +140,16 @@ class _TodoListViewState extends State<TodoListView> {
   }
 
   Future<List<Todo>> select() async {
-    List<Map<String, dynamic>> _result = await _db.query('t_todo');
-    return List.generate(_result.length, (i) {
-      Map<String, dynamic> _td = _result[i];
-      return Todo(
-        _td['content'],
-        status: _td['status'],
-        dueDttm: _td['dueDttm'],
-      );
+    List<Map<String, dynamic>> _todoList = await _db.query('t_todo');
+    return List.generate(_todoList.length, (i) {
+      Map<String, dynamic> _map = _todoList[i];
+      return Todo.fromMap(_map);
     });
   }
 
   void insert() {
-    Todo _td = Todo('insert todo');
-    _db.insert('t_todo', _td.toResultMap());
+    Todo _td = Todo('insert하기');
+    _db.insert('t_todo', _td.toMap());
   }
 }
 
@@ -151,12 +169,20 @@ class Todo {
     return 'Todo{content: $content, status: $status, dueDttm: $dueDttm}';
   }
 
-  Map<String, dynamic> toResultMap() {
+  // convert type: text, integer, integer
+  Map<String, dynamic> toMap() {
     return {
       'content': content,
       'status': status.index,
       'due_dttm': dueDttm.millisecondsSinceEpoch,
     };
+  }
+
+  // convert type: String, Status, DateTime
+  Todo.fromMap(Map<String, dynamic> map) {
+    content = map['content'];
+    status = Status.values[map['status']];
+    dueDttm = DateTime.fromMillisecondsSinceEpoch(map['due_dttm']);
   }
 
   static IconData iconData(Status status) {
@@ -175,7 +201,7 @@ class DB {
   static Future<Database> open() async {
     debugPrint('---> open database');
     String _path = join(await getDatabasesPath(), 'todo.db');
-    await deleteDatabase(_path);
+//    await deleteDatabase(_path);
     return openDatabase(
       _path,
       version: 1,
@@ -185,7 +211,7 @@ class DB {
           '''create table t_todo(
             no integer primary key autoincrement
             ,content text not null
-            ,status text default 0
+            ,status integer default 0
             ,due_dttm integer default (datetime('now', 'localtime'))
           )''',
         );
