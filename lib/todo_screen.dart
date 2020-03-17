@@ -49,6 +49,38 @@ class _TodoScreenState extends State<TodoScreen> {
       ),
       resizeToAvoidBottomPadding: false,
       body: TodoListView(mode: _mode),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          debugPrint('add click');
+          showModalBottomSheet(
+              context: context,
+              builder: (BuildContext context) {
+                return Container(
+                  padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).viewInsets.bottom),
+                  child: TextField(
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: '무엇을 할까요?',
+                      suffixIcon: Icon(Icons.add),
+                      border: InputBorder.none,
+                    ),
+                    onSubmitted: (String value) {
+                      setState(() {
+                        _mode = Mode.add;
+                        debugPrint('add!');
+                      });
+                    },
+                  ),
+                );
+              });
+        },
+        child: Icon(
+          Icons.add,
+          color: Colors.grey[900],
+        ),
+        backgroundColor: Colors.white,
+      ),
     );
   }
 }
@@ -77,8 +109,9 @@ class AppBarBottomView extends StatelessWidget {
 //    * because the builders are only called for the children that are actually visible.
 class TodoListView extends StatefulWidget {
   final Mode mode;
+  final String addContent;
 
-  TodoListView({@required this.mode});
+  TodoListView({@required this.mode, this.addContent = ''});
 
   @override
   _TodoListViewState createState() => _TodoListViewState();
@@ -111,7 +144,7 @@ class _TodoListViewState extends State<TodoListView> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('--> build! ${widget.mode}');
+    debugPrint('--> build! ${widget.mode}, ${widget.addContent}');
     return Column(
       children: <Widget>[
         TextField(
@@ -174,7 +207,7 @@ class _TodoListViewState extends State<TodoListView> {
                         ? IconButton(
                             icon: Icon(Icons.edit),
                             onPressed: () {
-                              debugPrint('edit click no: ${_todo.no}');
+                              debugPrint('edit click: ${_todo.no}');
 //                              _target = _todo;
 //                              _focusNode.requestFocus();
                             },
