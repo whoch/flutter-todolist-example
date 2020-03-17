@@ -36,11 +36,14 @@ class _TodoScreenState extends State<TodoScreen> {
         actions: <Widget>[
           FlatButton(
             onPressed: () {
+              bool isEditmode = (_mode == Mode.edit);
               setState(() {
-                _mode = Mode.edit;
+                _mode = isEditmode ? Mode.init : Mode.edit;
               });
             },
-            child: Text('편집', style: TextStyle(fontSize: 18)),
+            child: _mode == Mode.edit
+                ? Text('완료', style: TextStyle(fontSize: 18))
+                : Text('편집', style: TextStyle(fontSize: 18)),
           ),
         ],
       ),
@@ -119,11 +122,10 @@ class _TodoListViewState extends State<TodoListView> {
                 await insert(content: value);
                 break;
               case Mode.edit:
-                await update(content: value, currentNo: _target.no);
-                _target = null;
+//                await update(content: value, currentNo: _target.no);
+//                _target = null;
                 break;
               case Mode.add:
-                // 추후 bottomButton에서 구현할 때 여기로 insert 이동
                 break;
             }
             List<Todo> result = await select();
@@ -138,35 +140,46 @@ class _TodoListViewState extends State<TodoListView> {
             itemBuilder: (context, index) {
               Todo _todo = _todolist[index];
               return ListTile(
-                title: widget.mode == Mode.init
-                    ? Text(
-                        '<${widget.mode}> ${_todo.no}, ${_todo.content}, ${_todo.status}')
-                    : Text('dddddddddddddd'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    IconButton(
-                      icon: Icon(Todo.iconData(_todo.status)),
-                      onPressed: () {
-                        debugPrint('status click: $index, ${_todo.no}');
-                      },
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.edit),
-                      onPressed: () {
-                        debugPrint('edit click: $index, ${_todo.no}');
-                        _target = _todo;
-                        _focusNode.requestFocus();
-                      },
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.delete_outline),
-                      onPressed: () {
-                        debugPrint('delete click: $index, ${_todo.no}');
-                      },
-                    ),
-                  ],
-                ),
+                leading: widget.mode == Mode.edit
+                    ? IconButton(
+                        icon: Icon(Icons.remove_circle),
+                        onPressed: () async {
+                          debugPrint('delete click: ${_todo.no}');
+                          await delete(targetNo: _todo.no);
+                          List<Todo> result = await select();
+                          setState(() {
+                            _todolist = result;
+                          });
+                        },
+                      )
+                    : null,
+                title: Text(
+                    '<${widget.mode}> ${_todo.no}, ${_todo.content}, ${_todo.status}'),
+                trailing: widget.mode == Mode.init
+                    ? IconButton(
+                        icon: Icon(Todo.iconData(_todo.status)),
+                        onPressed: () async {
+                          Status _toggle = (_todo.status == Status.none
+                              ? Status.done
+                              : Status.none);
+                          await updateStatus(
+                              targetNo: _todo.no, status: _toggle);
+                          List<Todo> result = await select();
+                          setState(() {
+                            _todolist = result;
+                          });
+                        },
+                      )
+                    : widget.mode == Mode.edit
+                        ? IconButton(
+                            icon: Icon(Icons.edit),
+                            onPressed: () {
+                              debugPrint('edit click no: ${_todo.no}');
+//                              _target = _todo;
+//                              _focusNode.requestFocus();
+                            },
+                          )
+                        : null,
               );
             },
             separatorBuilder: (_, index) {
@@ -181,7 +194,7 @@ class _TodoListViewState extends State<TodoListView> {
 
   Future<List<Todo>> select() async {
     List<Map<String, dynamic>> _todoList = await _db.query('t_todo');
-    debugPrint('select -> $_todoList');
+    debugPrint('$_todoList');
     return List.generate(_todoList.length, (i) {
       Map<String, dynamic> _map = _todoList[i];
       return Todo.fromMap(_map);
@@ -189,13 +202,22 @@ class _TodoListViewState extends State<TodoListView> {
   }
 
   void insert({@required String content}) {
-    Todo _td = Todo(content);
+    Todo _td = Todo.add(content);
     _db.insert('t_todo', _td.toMap());
   }
 
-  void update({@required String content, @required int currentNo}) {
-    Todo _td = Todo(content, no: currentNo);
-    _db.update('t_todo', _td.toMap());
+  Future<void> updateStatus(
+      {@required int targetNo, @required Status status}) async {
+    Todo t = Todo(status: status);
+    int rows = await _db
+        .update('t_todo', t.toMap(), where: 'no = ?', whereArgs: [targetNo]);
+    debugPrint('# update rows: $rows');
+  }
+
+  Future<void> delete({@required int targetNo}) async {
+    int rows =
+        await _db.delete('t_todo', where: 'no = ?', whereArgs: [targetNo]);
+    debugPrint('# delete rows: $rows');
   }
 }
 
@@ -205,11 +227,12 @@ class Todo {
   Status status;
   DateTime dueDttm;
 
-  Todo(String content, {int no, Status status, DateTime dueDttm}) {
+  Todo({this.no, this.content, this.status, this.dueDttm});
+
+  Todo.add(String content) {
     this.content = content;
-    this.no = no ?? null;
-    this.status = status ?? Status.none;
-    this.dueDttm = dueDttm ?? DateTime.now();
+    this.status = Status.none;
+    this.dueDttm = DateTime.now();
   }
 
   @override
@@ -220,10 +243,10 @@ class Todo {
   // convert type: text, integer, integer
   Map<String, dynamic> toMap() {
     return {
-      'no': no,
-      'content': content,
-      'status': status.index,
-      'due_dttm': dueDttm.millisecondsSinceEpoch,
+      if (no != null) 'no': no,
+      if (content != null) 'content': content,
+      if (status != null) 'status': status.index,
+      if (dueDttm != null) 'due_dttm': dueDttm.millisecondsSinceEpoch,
     };
   }
 
@@ -249,14 +272,14 @@ class Todo {
 
 class DB {
   static Future<Database> open() async {
-    debugPrint('---> open database');
+    debugPrint('--> open database');
     String _path = join(await getDatabasesPath(), 'todo.db');
 //    await deleteDatabase(_path);
     return openDatabase(
       _path,
       version: 1,
       onCreate: (db, version) {
-        debugPrint('---> on create database');
+        debugPrint('--> on create database');
         return db.execute(
           '''create table t_todo(
             no integer primary key autoincrement
