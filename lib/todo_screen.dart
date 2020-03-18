@@ -3,8 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
-enum Status { none, done, pass }
+DBHelper dbHelper;
 enum Mode { init, add, edit }
+enum Status { none, done, pass }
+
+IconData todoIconData(Status status) {
+  switch (status) {
+    case Status.none:
+      return Icons.change_history;
+    case Status.done:
+      return Icons.check;
+    case Status.pass:
+      return Icons.arrow_forward;
+  }
+}
 
 class TodoScreen extends StatefulWidget {
   @override
@@ -13,14 +25,32 @@ class TodoScreen extends StatefulWidget {
 
 class _TodoScreenState extends State<TodoScreen> {
   Mode _mode;
+  EventHandler _handler;
+  List<Todo> _todolist = <Todo>[];
 
   @override
   void initState() {
     _mode = Mode.init;
+    _handler = EventHandler(_todoListHandler);
+    initDatabase();
+    debugPrint('--> init State!');
+  }
+
+  void initDatabase() async {
+    dbHelper = DBHelper.instance;
+    await dbHelper.open();
+    _todolist = await dbHelper.select();
+  }
+
+  @override
+  void dispose() {
+    dbHelper.close();
+    debugPrint('---> dispose database');
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('parent build!');
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -48,10 +78,9 @@ class _TodoScreenState extends State<TodoScreen> {
         ],
       ),
       resizeToAvoidBottomPadding: false,
-      body: TodoListView(mode: _mode),
+      body: TodoListView(_mode, _handler, _todolist),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          debugPrint('add click');
           showModalBottomSheet(
               context: context,
               builder: (BuildContext context) {
@@ -65,11 +94,9 @@ class _TodoScreenState extends State<TodoScreen> {
                       suffixIcon: Icon(Icons.add),
                       border: InputBorder.none,
                     ),
-                    onSubmitted: (String value) {
-                      setState(() {
-                        _mode = Mode.add;
-                        debugPrint('add!');
-                      });
+                    onSubmitted: (String content) {
+                      _handler.add(content);
+                      Navigator.pop(context);
                     },
                   ),
                 );
@@ -82,6 +109,51 @@ class _TodoScreenState extends State<TodoScreen> {
         backgroundColor: Colors.white,
       ),
     );
+  }
+
+  void _todoListHandler(List<Todo> todoList) {
+    setState(() {
+      _todolist = todoList;
+    });
+  }
+}
+
+class EventHandler {
+  final ValueChanged<List<Todo>> _handler;
+  EventHandler(this._handler);
+
+  Future<void> _fetch() async {
+    List<Todo> result = await dbHelper.select();
+    _handler(result);
+  }
+
+  Future<void> add(String content) async {
+    int row = await dbHelper.insert(content: content);
+    await _fetch();
+    debugPrint('# insert $row rows, content: $content');
+  }
+
+  Future<void> toggleStatus(int targetNo, Status targetStatus) async {
+    Status changeStatus =
+        (targetStatus == Status.none ? Status.done : Status.none);
+    int row = await dbHelper.updateStatus(no: targetNo, status: changeStatus);
+    await _fetch();
+    debugPrint(
+        '# update $row rows, no: $targetNo, status: $targetStatus -> $changeStatus');
+  }
+
+  Future<void> modify(int targetNo, String changeContent) async {
+    int row =
+        await dbHelper.updateContent(no: targetNo, content: changeContent);
+    await _fetch();
+    debugPrint(
+        '# update $row rows, no: $targetNo, change content: $changeContent');
+  }
+
+  Future<void> delete(int targetNo) async {
+    int row = await dbHelper.delete(no: targetNo);
+    await _fetch();
+    debugPrint('# delete $row rows, no: $targetNo');
   }
 }
 
@@ -99,158 +171,92 @@ class AppBarBottomView extends StatelessWidget {
   }
 }
 
-// # ListTile.divideTiles vs ListView.separated
-// 참고 url:
-// https://stackoverflow.com/questions/50687633/flutter-divider-how-could-i-add-divider-between-each-line-in-my-code
-// https://stackoverflow.com/questions/52207612/how-to-use-dividetiles-in-flutter
-// - short static list: divideTiles, long dynamic list: separated를 사용
-//  -> 이유: 소스코드를 보면 아래와 같이 설명 되어있음
-//    * large number of item and separator children
-//    * because the builders are only called for the children that are actually visible.
-class TodoListView extends StatefulWidget {
-  final Mode mode;
-  final String addContent;
+class TodoListView extends StatelessWidget {
+  final Mode _mode;
+  final EventHandler _handler;
+  final List<Todo> _todolist;
 
-  TodoListView({@required this.mode, this.addContent = ''});
-
-  @override
-  _TodoListViewState createState() => _TodoListViewState();
-}
-
-class _TodoListViewState extends State<TodoListView> {
-  Database _db;
-  FocusNode _focusNode;
-  List<Todo> _todolist = <Todo>[];
-  Todo _target;
-
-  @override
-  void initState() {
-    initData();
-    _focusNode = FocusNode();
-    debugPrint('--> init State!');
-  }
-
-  void initData() async {
-    _db = await DB.open();
-    _todolist = await select();
-  }
-
-  @override
-  void dispose() {
-    _db.close();
-    _focusNode.dispose();
-    debugPrint('---> dispose database');
-  }
+  TodoListView(this._mode, this._handler, this._todolist);
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('--> build! ${widget.mode}, ${widget.addContent}');
-    return Column(
-      children: <Widget>[
-        TextField(
-          focusNode: _focusNode,
-          onSubmitted: (String value) async {
-            switch (widget.mode) {
-              case Mode.init:
-                await insert(content: value);
-                break;
-              case Mode.edit:
-//                await update(content: value, currentNo: _target.no);
-//                _target = null;
-                break;
-              case Mode.add:
-                break;
-            }
-            List<Todo> result = await select();
-            setState(() {
-              _todolist = result;
-            });
-          },
-        ),
-        SizedBox(
-          height: 400,
-          child: ListView.separated(
-            itemBuilder: (context, index) {
-              Todo _todo = _todolist[index];
-              return ListTile(
-                leading: widget.mode == Mode.edit
-                    ? IconButton(
-                        icon: Icon(Icons.remove_circle),
-                        onPressed: () async {
-                          debugPrint('delete click: ${_todo.no}');
-                          await delete(targetNo: _todo.no);
-                          List<Todo> result = await select();
-                          setState(() {
-                            _todolist = result;
-                          });
-                        },
-                      )
-                    : null,
-                title: Text(
-                    '<${widget.mode}> ${_todo.no}, ${_todo.content}, ${_todo.status}'),
-                trailing: widget.mode == Mode.init
-                    ? IconButton(
-                        icon: Icon(Todo.iconData(_todo.status)),
-                        onPressed: () async {
-                          Status _toggle = (_todo.status == Status.none
-                              ? Status.done
-                              : Status.none);
-                          await updateStatus(
-                              targetNo: _todo.no, status: _toggle);
-                          List<Todo> result = await select();
-                          setState(() {
-                            _todolist = result;
-                          });
-                        },
-                      )
-                    : widget.mode == Mode.edit
-                        ? IconButton(
-                            icon: Icon(Icons.edit),
-                            onPressed: () {
-                              debugPrint('edit click: ${_todo.no}');
-//                              _target = _todo;
-//                              _focusNode.requestFocus();
-                            },
-                          )
-                        : null,
-              );
-            },
-            separatorBuilder: (_, index) {
-              return Divider();
-            },
-            itemCount: _todolist.length,
-          ),
-        ),
-      ],
+    debugPrint('child build!');
+    return ListView.separated(
+      itemBuilder: (context, index) {
+        Todo _todo = _todolist[index];
+        return ListTile(
+          leading: _mode == Mode.edit
+              ? IconButton(
+                  icon: Icon(Icons.remove_circle),
+                  onPressed: () {
+                    _handler.delete(_todo.no);
+                  },
+                )
+              : null,
+          title:
+              Text('<${_mode}> ${_todo.no}, ${_todo.content}, ${_todo.status}'),
+          trailing: _mode == Mode.init
+              ? IconButton(
+                  icon: Icon(todoIconData(_todo.status)),
+                  onPressed: () {
+                    _handler.toggleStatus(_todo.no, _todo.status);
+                  },
+                )
+              : _mode == Mode.edit
+                  ? IconButton(
+                      icon: Icon(Icons.edit),
+                      onPressed: () {
+                        debugPrint('edit click: ${_todo.no}');
+                        showModalBottomSheet(
+                            context: context,
+                            builder: (BuildContext context) {
+                              TextEditingController _controller =
+                                  TextEditingController(text: _todo.content);
+                              return Column(
+                                children: <Widget>[
+                                  Container(
+                                    color: Colors.grey[200],
+                                    padding: EdgeInsets.symmetric(vertical: 10),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: <Widget>[
+                                        FlatButton(
+                                          child: Text('닫기'),
+                                          onPressed: () {
+                                            Navigator.pop(context);
+                                          },
+                                        ),
+                                        FlatButton(
+                                          child: Text('저장'),
+                                          onPressed: () {
+                                            _handler.modify(
+                                                _todo.no, _controller.text);
+                                            Navigator.pop(context);
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  TextField(
+                                    controller: _controller,
+                                    decoration: InputDecoration(
+                                      border: InputBorder.none,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            });
+                      },
+                    )
+                  : null,
+        );
+      },
+      separatorBuilder: (_, index) {
+        return Divider();
+      },
+      itemCount: _todolist.length,
     );
-  }
-
-  Future<List<Todo>> select() async {
-    List<Map<String, dynamic>> _todoList = await _db.query('t_todo');
-    debugPrint('$_todoList');
-    return List.generate(_todoList.length, (i) {
-      Map<String, dynamic> _map = _todoList[i];
-      return Todo.fromMap(_map);
-    });
-  }
-
-  void insert({@required String content}) {
-    Todo _td = Todo.add(content);
-    _db.insert('t_todo', _td.toMap());
-  }
-
-  Future<void> updateStatus(
-      {@required int targetNo, @required Status status}) async {
-    Todo t = Todo(status: status);
-    int rows = await _db
-        .update('t_todo', t.toMap(), where: 'no = ?', whereArgs: [targetNo]);
-    debugPrint('# update rows: $rows');
-  }
-
-  Future<void> delete({@required int targetNo}) async {
-    int rows =
-        await _db.delete('t_todo', where: 'no = ?', whereArgs: [targetNo]);
-    debugPrint('# delete rows: $rows');
   }
 }
 
@@ -291,29 +297,32 @@ class Todo {
     dueDttm = DateTime.fromMillisecondsSinceEpoch(map['due_dttm']);
   }
 
-  static IconData iconData(Status status) {
-    switch (status) {
-      case Status.none:
-        return Icons.change_history;
-      case Status.done:
-        return Icons.check;
-      case Status.pass:
-        return Icons.arrow_forward;
-    }
-  }
+  // 위에랑 뭐가 다르지
+  factory Todo.fromMap2(Map<String, dynamic> map) => Todo(
+        no: map['no'],
+        status: Status.values[map['status']],
+        content: map['content'],
+        dueDttm: DateTime.fromMillisecondsSinceEpoch(map['due_dttm']),
+      );
 }
 
-class DB {
-  static Future<Database> open() async {
+class DBHelper {
+  // Create a singleton
+  DBHelper._();
+
+  static final DBHelper instance = DBHelper._();
+  Database _database;
+
+  Future<Database> open() async {
     debugPrint('--> open database');
-    String _path = join(await getDatabasesPath(), 'todo.db');
+    String path = join(await getDatabasesPath(), 'todo.db');
 //    await deleteDatabase(_path);
-    return openDatabase(
-      _path,
+    _database = await openDatabase(
+      path,
       version: 1,
-      onCreate: (db, version) {
+      onCreate: (Database db, int version) async {
         debugPrint('--> on create database');
-        return db.execute(
+        await db.execute(
           '''create table t_todo(
             no integer primary key autoincrement
             ,content text not null
@@ -323,5 +332,38 @@ class DB {
         );
       },
     );
+  }
+
+  Future<void> close() async => _database.close();
+
+  Future<List<Todo>> select() async {
+    List<Map<String, dynamic>> _todoList = await _database.query('t_todo');
+    debugPrint('$_todoList');
+    return List.generate(_todoList.length, (i) {
+      Map<String, dynamic> _map = _todoList[i];
+      return Todo.fromMap(_map);
+    });
+  }
+
+  Future<int> insert({@required String content}) async {
+    Todo _td = Todo.add(content);
+    return await _database.insert('t_todo', _td.toMap());
+  }
+
+  Future<int> updateStatus({@required int no, @required Status status}) async {
+    Todo t = Todo(status: status);
+    return await _database
+        .update('t_todo', t.toMap(), where: 'no = ?', whereArgs: [no]);
+  }
+
+  Future<int> updateContent(
+      {@required int no, @required String content}) async {
+    Todo t = Todo(content: content);
+    return await _database
+        .update('t_todo', t.toMap(), where: 'no = ?', whereArgs: [no]);
+  }
+
+  Future<int> delete({@required int no}) async {
+    return await _database.delete('t_todo', where: 'no = ?', whereArgs: [no]);
   }
 }
