@@ -77,7 +77,7 @@ class _TodoScreenState extends State<TodoScreen> {
           ),
         ],
       ),
-      resizeToAvoidBottomPadding: false,
+//      resizeToAvoidBottomPadding: false,
       body: TodoListView(_mode, _handler, _todolist),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -120,6 +120,7 @@ class _TodoScreenState extends State<TodoScreen> {
 
 class EventHandler {
   final ValueChanged<List<Todo>> _handler;
+
   EventHandler(this._handler);
 
   Future<void> _fetch() async {
@@ -171,59 +172,38 @@ class AppBarBottomView extends StatelessWidget {
   }
 }
 
-class TodoListView extends StatefulWidget {
+class TodoListView extends StatelessWidget {
   final Mode mode;
   final EventHandler handler;
-  final List<Todo> todolist;
+  final List<Todo> todoList;
 
-  TodoListView(this.mode, this.handler, this.todolist);
-
-  @override
-  _TodoListViewState createState() => _TodoListViewState();
-}
-
-class _TodoListViewState extends State<TodoListView> {
-  TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController();
-    debugPrint('# init');
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-    debugPrint('# dispose');
-  }
+  TodoListView(this.mode, this.handler, this.todoList);
 
   @override
   Widget build(BuildContext context) {
     debugPrint('child build!');
     return ListView.separated(
       itemBuilder: (context, index) {
-        Todo _todo = widget.todolist[index];
+        Todo _todo = todoList[index];
         return ListTile(
-          leading: widget.mode == Mode.edit
+          leading: mode == Mode.edit
               ? IconButton(
                   icon: Icon(Icons.remove_circle),
                   onPressed: () {
-                    widget.handler.delete(_todo.no);
+                    handler.delete(_todo.no);
                   },
                 )
               : null,
-          title: Text(
-              '<${widget.mode}> ${_todo.no}, ${_todo.content}, ${_todo.status}'),
-          trailing: widget.mode == Mode.init
+          title:
+              Text('<${mode}> ${_todo.no}, ${_todo.content}, ${_todo.status}'),
+          trailing: mode == Mode.init
               ? IconButton(
                   icon: Icon(todoIconData(_todo.status)),
                   onPressed: () {
-                    widget.handler.toggleStatus(_todo.no, _todo.status);
+                    handler.toggleStatus(_todo.no, _todo.status);
                   },
                 )
-              : widget.mode == Mode.edit
+              : mode == Mode.edit
                   ? IconButton(
                       icon: Icon(Icons.edit),
                       onPressed: () {
@@ -232,41 +212,7 @@ class _TodoListViewState extends State<TodoListView> {
                             context: context,
                             builder: (_) {
                               debugPrint('## build bottom sheet');
-                              _controller.text = _todo.content;
-                              return Column(
-                                children: <Widget>[
-                                  Container(
-                                    color: Colors.grey[200],
-                                    padding: EdgeInsets.symmetric(vertical: 10),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: <Widget>[
-                                        FlatButton(
-                                          child: Text('닫기'),
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                          },
-                                        ),
-                                        FlatButton(
-                                          child: Text('저장'),
-                                          onPressed: () {
-                                            widget.handler.modify(
-                                                _todo.no, _controller.text);
-                                            Navigator.pop(context);
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  TextField(
-                                    controller: _controller,
-                                    decoration: InputDecoration(
-                                      border: InputBorder.none,
-                                    ),
-                                  ),
-                                ],
-                              );
+                              return EditModeView(handler, _todo);
                             });
                       },
                     )
@@ -276,7 +222,86 @@ class _TodoListViewState extends State<TodoListView> {
       separatorBuilder: (_, __) {
         return Divider();
       },
-      itemCount: widget.todolist.length,
+      itemCount: todoList.length,
+    );
+  }
+}
+
+class EditModeView extends StatefulWidget {
+  final EventHandler handler;
+  final Todo todo;
+
+  EditModeView(this.handler, this.todo);
+
+  @override
+  _EditModeViewState createState() => _EditModeViewState();
+}
+
+class _EditModeViewState extends State<EditModeView> {
+  TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController.fromValue(
+      TextEditingValue(
+        text: widget.todo.content,
+        selection: TextSelection.collapsed(
+          offset: widget.todo.content.length,
+        ),
+      ),
+    );
+    debugPrint('# init edit mode view');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+    debugPrint('# dispose edit mode view');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Container(
+          color: Colors.grey[200],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              FlatButton(
+                child: Text('닫기'),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+              FlatButton(
+                child: Text('저장'),
+                onPressed: () {
+                  widget.handler.modify(widget.todo.no, _controller.text);
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        ),
+        // 감싸지 않으면 에러나서 expanded로 처리함
+        // 에러 내용: A RenderFlex overflowed by 14 pixels on the bottom.
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom),
+            child: TextField(
+              controller: _controller,
+              decoration: InputDecoration(
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
