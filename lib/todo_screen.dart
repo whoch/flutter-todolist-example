@@ -66,9 +66,9 @@ class _TodoScreenState extends State<TodoScreen> {
         actions: <Widget>[
           FlatButton(
             onPressed: () {
-              bool isEditmode = (_mode == Mode.edit);
+              bool isEditMode = (_mode == Mode.edit);
               setState(() {
-                _mode = isEditmode ? Mode.init : Mode.edit;
+                _mode = isEditMode ? Mode.init : Mode.edit;
               });
             },
             child: _mode == Mode.edit
@@ -171,47 +171,68 @@ class AppBarBottomView extends StatelessWidget {
   }
 }
 
-class TodoListView extends StatelessWidget {
-  final Mode _mode;
-  final EventHandler _handler;
-  final List<Todo> _todolist;
+class TodoListView extends StatefulWidget {
+  final Mode mode;
+  final EventHandler handler;
+  final List<Todo> todolist;
 
-  TodoListView(this._mode, this._handler, this._todolist);
+  TodoListView(this.mode, this.handler, this.todolist);
+
+  @override
+  _TodoListViewState createState() => _TodoListViewState();
+}
+
+class _TodoListViewState extends State<TodoListView> {
+  TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    debugPrint('# init');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+    debugPrint('# dispose');
+  }
 
   @override
   Widget build(BuildContext context) {
     debugPrint('child build!');
     return ListView.separated(
       itemBuilder: (context, index) {
-        Todo _todo = _todolist[index];
+        Todo _todo = widget.todolist[index];
         return ListTile(
-          leading: _mode == Mode.edit
+          leading: widget.mode == Mode.edit
               ? IconButton(
                   icon: Icon(Icons.remove_circle),
                   onPressed: () {
-                    _handler.delete(_todo.no);
+                    widget.handler.delete(_todo.no);
                   },
                 )
               : null,
-          title:
-              Text('<${_mode}> ${_todo.no}, ${_todo.content}, ${_todo.status}'),
-          trailing: _mode == Mode.init
+          title: Text(
+              '<${widget.mode}> ${_todo.no}, ${_todo.content}, ${_todo.status}'),
+          trailing: widget.mode == Mode.init
               ? IconButton(
                   icon: Icon(todoIconData(_todo.status)),
                   onPressed: () {
-                    _handler.toggleStatus(_todo.no, _todo.status);
+                    widget.handler.toggleStatus(_todo.no, _todo.status);
                   },
                 )
-              : _mode == Mode.edit
+              : widget.mode == Mode.edit
                   ? IconButton(
                       icon: Icon(Icons.edit),
                       onPressed: () {
                         debugPrint('edit click: ${_todo.no}');
                         showModalBottomSheet(
                             context: context,
-                            builder: (BuildContext context) {
-                              TextEditingController _controller =
-                                  TextEditingController(text: _todo.content);
+                            builder: (_) {
+                              debugPrint('## build bottom sheet');
+                              _controller.text = _todo.content;
                               return Column(
                                 children: <Widget>[
                                   Container(
@@ -230,7 +251,7 @@ class TodoListView extends StatelessWidget {
                                         FlatButton(
                                           child: Text('저장'),
                                           onPressed: () {
-                                            _handler.modify(
+                                            widget.handler.modify(
                                                 _todo.no, _controller.text);
                                             Navigator.pop(context);
                                           },
@@ -252,10 +273,10 @@ class TodoListView extends StatelessWidget {
                   : null,
         );
       },
-      separatorBuilder: (_, index) {
+      separatorBuilder: (_, __) {
         return Divider();
       },
-      itemCount: _todolist.length,
+      itemCount: widget.todolist.length,
     );
   }
 }
