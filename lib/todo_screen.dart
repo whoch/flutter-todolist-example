@@ -77,7 +77,7 @@ class _TodoScreenState extends State<TodoScreen> {
           ),
         ],
       ),
-//      resizeToAvoidBottomPadding: false,
+//      resizeToAvoidBottomInset: false,
       body: TodoListView(_mode, _handler, _todolist),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -290,13 +290,19 @@ class _EditModeViewState extends State<EditModeView> {
         // 감싸지 않으면 에러나서 expanded로 처리함
         // 에러 내용: A RenderFlex overflowed by 14 pixels on the bottom.
         Expanded(
-          child: Container(
-            padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom),
-            child: TextField(
-              controller: _controller,
-              decoration: InputDecoration(
-                border: InputBorder.none,
+          child: GestureDetector(
+            onTap: () {
+              FocusScope.of(context).unfocus();
+            },
+            child: Container(
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: TextField(
+                controller: _controller,
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                ),
+                autofocus: true,
               ),
             ),
           ),
