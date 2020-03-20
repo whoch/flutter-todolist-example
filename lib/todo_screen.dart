@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -87,7 +89,6 @@ class _TodoScreenState extends State<TodoScreen> {
               context: context,
               builder: (BuildContext context) {
                 return Container(
-                  color: Colors.green,
                   padding: EdgeInsets.only(
                       bottom: MediaQuery.of(context).viewInsets.bottom),
                   child: TextField(
@@ -175,7 +176,7 @@ class EventHandler {
   }
 }
 
-class TodoListView extends StatelessWidget {
+class TodoListView extends StatefulWidget {
   final Mode mode;
   final EventHandler handler;
   final List<Todo> todoList;
@@ -183,50 +184,122 @@ class TodoListView extends StatelessWidget {
   TodoListView(this.mode, this.handler, this.todoList);
 
   @override
+  _TodoListViewState createState() => _TodoListViewState();
+}
+
+class _TodoListViewState extends State<TodoListView> {
+  SlidableController slidableController;
+  Animation<double> _rotationAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    slidableController = SlidableController();
+  }
+
+  @override
   Widget build(BuildContext context) {
     debugPrint('child build!');
     return ListView.separated(
       itemBuilder: (context, index) {
-        Todo _todo = todoList[index];
-        return ListTile(
-          leading: mode == Mode.edit
-              ? IconButton(
-                  icon: Icon(Icons.remove_circle),
-                  onPressed: () {
-                    handler.delete(_todo.no);
-                  },
-                )
-              : null,
-          title:
-              Text('<${mode}> ${_todo.no}, ${_todo.content}, ${_todo.status}'),
-          trailing: mode == Mode.init
-              ? IconButton(
-                  icon: Icon(todoIconData(_todo.status)),
-                  onPressed: () {
-                    handler.toggleStatus(_todo.no, _todo.status);
-                  },
-                )
-              : mode == Mode.edit
-                  ? IconButton(
-                      icon: Icon(Icons.edit),
-                      onPressed: () {
-                        debugPrint('edit click: ${_todo.no}');
-                        showModalBottomSheet(
-                            context: context,
-                            builder: (_) {
-                              debugPrint('## build bottom sheet');
-                              return EditModeView(handler, _todo);
-                            });
-                      },
-                    )
-                  : null,
+        Todo _todo = widget.todoList[index];
+        int targetNo = _todo.no;
+        return Slidable(
+          key: Key('$targetNo'),
+          controller: slidableController,
+          actionPane: SlidableDrawerActionPane(),
+          actionExtentRatio: 0.15,
+          showAllActionsThreshold: 0.3,
+          dismissal: SlidableDismissal(
+            child: SlidableDrawerDismissal(),
+            onWillDismiss: (actionType) {
+              return actionType == SlideActionType.secondary;
+            },
+            onDismissed: (actionType) {
+              widget.handler.delete(targetNo);
+              _showSnackBar(context, '삭제 완료');
+            },
+          ),
+          child: ListTile(
+            leading: widget.mode == Mode.edit
+                ? IconButton(
+                    icon: Icon(Icons.remove_circle),
+                    onPressed: () {
+                      widget.handler.delete(targetNo);
+                    },
+                  )
+                : null,
+            title: Text(
+                '<${widget.mode}> ${targetNo}, ${_todo.content}, ${_todo.status}'),
+            trailing: widget.mode == Mode.init
+                ? IconButton(
+                    icon: Icon(todoIconData(_todo.status)),
+                    onPressed: () {
+                      widget.handler.toggleStatus(targetNo, _todo.status);
+                    },
+                  )
+                : widget.mode == Mode.edit
+                    ? IconButton(
+                        icon: Icon(Icons.edit),
+                        onPressed: () {
+                          debugPrint('edit click: ${targetNo}');
+                          showModalBottomSheet(
+                              context: context,
+                              builder: (_) {
+                                return EditModeView(widget.handler, _todo);
+                              });
+                        },
+                      )
+                    : null,
+          ),
+          actions: <Widget>[
+            IconSlideAction(
+              caption: 'star',
+              icon: Icons.star,
+              color: Colors.blueAccent,
+              onTap: () {
+                debugPrint('on star tap');
+              },
+            ),
+            IconSlideAction(
+              caption: 'edit',
+              icon: Icons.edit,
+              color: Colors.green,
+              onTap: () {
+                debugPrint('on edit tap');
+                showModalBottomSheet(
+                    context: context,
+                    builder: (_) {
+                      debugPrint('## build bottom sheet');
+                      return EditModeView(widget.handler, _todo);
+                    });
+              },
+            )
+          ],
+          secondaryActions: <Widget>[
+            SlideAction(
+              color: Colors.red,
+              child: Icon(
+                Icons.delete,
+                color: Colors.white,
+              ),
+              closeOnTap: true,
+              onTap: () {
+                debugPrint('on delete tap');
+              },
+            )
+          ],
         );
       },
       separatorBuilder: (_, __) {
         return Divider();
       },
-      itemCount: todoList.length,
+      itemCount: widget.todoList.length,
     );
+  }
+
+  void _showSnackBar(BuildContext context, String text) {
+    Scaffold.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 }
 
