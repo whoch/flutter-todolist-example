@@ -39,7 +39,10 @@ class _TodoScreenState extends State<TodoScreen> {
   void initDatabase() async {
     dbHelper = DBHelper.instance;
     await dbHelper.open();
-    _todolist = await dbHelper.select();
+    List<Todo> result = await dbHelper.select();
+    setState(() {
+      _todolist = result;
+    });
   }
 
   @override
