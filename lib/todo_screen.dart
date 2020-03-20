@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -88,6 +87,7 @@ class _TodoScreenState extends State<TodoScreen> {
               context: context,
               builder: (BuildContext context) {
                 return Container(
+                  color: Colors.green,
                   padding: EdgeInsets.only(
                       bottom: MediaQuery.of(context).viewInsets.bottom),
                   child: TextField(
@@ -118,6 +118,20 @@ class _TodoScreenState extends State<TodoScreen> {
     setState(() {
       _todolist = todoList;
     });
+  }
+}
+
+class AppBarBottomView extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        child: Text(
+          '2020-03-12',
+          style: TextStyle(fontSize: 30),
+            ),
+      ),
+    );
   }
 }
 
@@ -158,20 +172,6 @@ class EventHandler {
     int row = await dbHelper.delete(no: targetNo);
     await _fetch();
     debugPrint('# delete $row rows, no: $targetNo');
-  }
-}
-
-class AppBarBottomView extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        child: Text(
-          '2020-03-12',
-          style: TextStyle(fontSize: 30),
-        ),
-      ),
-    );
   }
 }
 
@@ -266,51 +266,50 @@ class _EditModeViewState extends State<EditModeView> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Container(
-          color: Colors.grey[200],
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: <Widget>[
-              FlatButton(
-                child: Text('닫기'),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              ),
-              FlatButton(
-                child: Text('저장'),
-                onPressed: () {
-                  widget.handler.modify(widget.todo.no, _controller.text);
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-        ),
-        // 감싸지 않으면 에러나서 expanded로 처리함
-        // 에러 내용: A RenderFlex overflowed by 14 pixels on the bottom.
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              FocusScope.of(context).unfocus();
-            },
-            child: Container(
-              padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom),
-              child: TextField(
-                controller: _controller,
-                decoration: InputDecoration(
-                  border: InputBorder.none,
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Container(
+            color: Colors.grey[200],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                FlatButton(
+                  child: Text('닫기'),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
                 ),
-                autofocus: true,
+                FlatButton(
+                  child: Text('저장'),
+                  onPressed: () {
+                    widget.handler.modify(widget.todo.no, _controller.text);
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+          // 감싸지 않으면 에러나서 expanded로 처리함
+          // 에러 내용: A RenderFlex overflowed by 14 pixels on the bottom.
+          Container(
+            color: Colors.red,
+            child: TextField(
+              controller: _controller,
+              decoration: InputDecoration(
+                border: InputBorder.none,
               ),
             ),
           ),
-        ),
-      ],
+          Text('ddddddddddd'),
+          Text('ddddddddddd'),
+          Text('ddddddddddd'),
+        ],
+      ),
     );
   }
 }
