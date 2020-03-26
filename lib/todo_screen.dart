@@ -67,19 +67,6 @@ class _TodoScreenState extends State<TodoScreen> {
         ),
         backgroundColor: Colors.white.withOpacity(0.95),
         centerTitle: true,
-        actions: <Widget>[
-          FlatButton(
-            onPressed: () {
-              bool isEditMode = (_mode == Mode.edit);
-              setState(() {
-                _mode = isEditMode ? Mode.init : Mode.edit;
-              });
-            },
-            child: _mode == Mode.edit
-                ? Text('완료', style: TextStyle(fontSize: 18))
-                : Text('편집', style: TextStyle(fontSize: 18)),
-          ),
-        ],
       ),
       resizeToAvoidBottomInset: false,
       body: TodoListView(_mode, _handler, _todolist),
@@ -189,7 +176,6 @@ class TodoListView extends StatefulWidget {
 
 class _TodoListViewState extends State<TodoListView> {
   SlidableController slidableController;
-  Animation<double> _rotationAnimation;
 
   @override
   void initState() {
@@ -221,36 +207,14 @@ class _TodoListViewState extends State<TodoListView> {
             },
           ),
           child: ListTile(
-            leading: widget.mode == Mode.edit
-                ? IconButton(
-                    icon: Icon(Icons.remove_circle),
-                    onPressed: () {
-                      widget.handler.delete(targetNo);
-                    },
-                  )
-                : null,
             title: Text(
                 '<${widget.mode}> ${targetNo}, ${_todo.content}, ${_todo.status}'),
-            trailing: widget.mode == Mode.init
-                ? IconButton(
-                    icon: Icon(todoIconData(_todo.status)),
-                    onPressed: () {
-                      widget.handler.toggleStatus(targetNo, _todo.status);
-                    },
-                  )
-                : widget.mode == Mode.edit
-                    ? IconButton(
-                        icon: Icon(Icons.edit),
-                        onPressed: () {
-                          debugPrint('edit click: ${targetNo}');
-                          showModalBottomSheet(
-                              context: context,
-                              builder: (_) {
-                                return EditModeView(widget.handler, _todo);
-                              });
-                        },
-                      )
-                    : null,
+            trailing: IconButton(
+              icon: Icon(todoIconData(_todo.status)),
+              onPressed: () {
+                widget.handler.toggleStatus(targetNo, _todo.status);
+              },
+            ),
           ),
           actions: <Widget>[
             IconSlideAction(
