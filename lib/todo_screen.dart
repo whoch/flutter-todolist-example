@@ -245,7 +245,8 @@ class _TodoListViewState extends State<TodoListView> {
               ),
               closeOnTap: true,
               onTap: () {
-                debugPrint('on delete tap');
+                widget.handler.delete(targetNo);
+                _showSnackBar(context, '삭제 완료');
               },
             )
           ],
