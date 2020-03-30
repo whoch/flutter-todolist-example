@@ -215,17 +215,21 @@ class _TodoListViewState extends State<TodoListView> {
             ),
           ),
           actions: <Widget>[
-            IconSlideAction(
-              caption: 'star',
-              icon: Icons.star,
-              color: Colors.blueAccent,
+            SlideAction(
+              child: Icon(
+                Icons.star,
+                color: Colors.white,
+              ),
+              color: Colors.amberAccent,
               onTap: () {
                 debugPrint('on star tap');
               },
             ),
-            IconSlideAction(
-              caption: 'edit',
-              icon: Icons.edit,
+            SlideAction(
+              child: Icon(
+                Icons.edit,
+                color: Colors.white,
+              ),
               color: Colors.green,
               onTap: () {
                 showModalBottomSheet(
