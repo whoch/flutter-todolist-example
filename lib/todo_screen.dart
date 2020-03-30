@@ -54,7 +54,6 @@ class _TodoScreenState extends State<TodoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('parent build!');
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -185,7 +184,6 @@ class _TodoListViewState extends State<TodoListView> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('child build!');
     return ListView.separated(
       itemBuilder: (context, index) {
         Todo _todo = widget.todoList[index];
@@ -230,11 +228,9 @@ class _TodoListViewState extends State<TodoListView> {
               icon: Icons.edit,
               color: Colors.green,
               onTap: () {
-                debugPrint('on edit tap');
                 showModalBottomSheet(
                     context: context,
                     builder: (_) {
-                      debugPrint('## build bottom sheet');
                       return EditModeView(widget.handler, _todo);
                     });
               },
@@ -291,14 +287,12 @@ class _EditModeViewState extends State<EditModeView> {
         ),
       ),
     );
-    debugPrint('# init edit mode view');
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
-    debugPrint('# dispose edit mode view');
   }
 
   @override
@@ -383,14 +377,6 @@ class Todo {
     status = Status.values[map['status']];
     dueDttm = DateTime.fromMillisecondsSinceEpoch(map['due_dttm']);
   }
-
-  // 위에랑 뭐가 다르지
-  factory Todo.fromMap2(Map<String, dynamic> map) => Todo(
-        no: map['no'],
-        status: Status.values[map['status']],
-        content: map['content'],
-        dueDttm: DateTime.fromMillisecondsSinceEpoch(map['due_dttm']),
-      );
 }
 
 class DBHelper {
@@ -425,7 +411,6 @@ class DBHelper {
 
   Future<List<Todo>> select() async {
     List<Map<String, dynamic>> _todoList = await _database.query('t_todo');
-    debugPrint('$_todoList');
     return List.generate(_todoList.length, (i) {
       Map<String, dynamic> _map = _todoList[i];
       return Todo.fromMap(_map);
