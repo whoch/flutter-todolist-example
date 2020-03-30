@@ -7,6 +7,12 @@ import 'package:sqflite/sqflite.dart';
 DBHelper dbHelper;
 enum Mode { init, add, edit }
 enum Status { none, done, pass }
+final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+
+void showSnackBar(BuildContext context, String text) {
+  scaffoldKey.currentState.showSnackBar(SnackBar(content: Text(text)));
+  print('밖으로 뺌');
+}
 
 IconData todoIconData(Status status) {
   switch (status) {
@@ -55,6 +61,7 @@ class _TodoScreenState extends State<TodoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: scaffoldKey,
       appBar: AppBar(
         title: Text(
           'my todo list',
@@ -201,7 +208,7 @@ class _TodoListViewState extends State<TodoListView> {
             },
             onDismissed: (actionType) {
               widget.handler.delete(targetNo);
-              _showSnackBar(context, '삭제 완료');
+              showSnackBar(context, '삭제 완료');
             },
           ),
           child: ListTile(
@@ -250,7 +257,7 @@ class _TodoListViewState extends State<TodoListView> {
               closeOnTap: true,
               onTap: () {
                 widget.handler.delete(targetNo);
-                _showSnackBar(context, '삭제 완료');
+                showSnackBar(context, '삭제 완료');
               },
             )
           ],
@@ -261,10 +268,6 @@ class _TodoListViewState extends State<TodoListView> {
       },
       itemCount: widget.todoList.length,
     );
-  }
-
-  void _showSnackBar(BuildContext context, String text) {
-    Scaffold.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 }
 
@@ -302,6 +305,7 @@ class _EditModeViewState extends State<EditModeView> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('----build');
     return GestureDetector(
       onTap: () {
         FocusScope.of(context).unfocus();
@@ -324,6 +328,7 @@ class _EditModeViewState extends State<EditModeView> {
                   child: Text('저장'),
                   onPressed: () {
                     widget.handler.modify(widget.todo.no, _controller.text);
+                    showSnackBar(context, '수정 완료');
                     Navigator.pop(context);
                   },
                 ),
