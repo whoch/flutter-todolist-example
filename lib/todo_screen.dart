@@ -19,7 +19,7 @@ IconData todoIconData(Status status) {
     case Status.none:
       return Icons.change_history;
     case Status.done:
-      return Icons.check;
+      return Icons.radio_button_unchecked;
     case Status.pass:
       return Icons.arrow_forward;
   }
@@ -213,7 +213,13 @@ class _TodoListViewState extends State<TodoListView> {
           ),
           child: ListTile(
             title: Text(
-                '<${widget.mode}> ${targetNo}, ${_todo.content}, ${_todo.status}'),
+              '<${widget.mode}> ${targetNo}, ${_todo.content}',
+              style: TextStyle(
+                color: _todo.status == Status.done
+                    ? Colors.grey[350]
+                    : Colors.grey[800],
+              ),
+            ),
             trailing: IconButton(
               icon: Icon(todoIconData(_todo.status)),
               onPressed: () {
