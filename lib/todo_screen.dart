@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:intl/intl.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -120,7 +121,7 @@ class AppBarBottomView extends StatelessWidget {
     return Expanded(
       child: Container(
         child: Text(
-          '2020-03-12',
+          DateFormat('yyyy.MM.dd').format(DateTime.now()),
           style: TextStyle(fontSize: 30),
         ),
       ),
