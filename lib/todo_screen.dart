@@ -11,7 +11,6 @@ final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
 void showSnackBar(BuildContext context, String text) {
   scaffoldKey.currentState.showSnackBar(SnackBar(content: Text(text)));
-  print('밖으로 뺌');
 }
 
 IconData todoIconData(Status status) {
@@ -145,15 +144,6 @@ class EventHandler {
     debugPrint('# insert $row rows, content: $content');
   }
 
-  Future<void> toggleStatus(int targetNo, Status targetStatus) async {
-    Status changeStatus =
-        (targetStatus == Status.none ? Status.done : Status.none);
-    int row = await dbHelper.updateStatus(no: targetNo, status: changeStatus);
-    await _fetch();
-    debugPrint(
-        '# update $row rows, no: $targetNo, status: $targetStatus -> $changeStatus');
-  }
-
   Future<void> modify(int targetNo, String changeContent) async {
     int row =
         await dbHelper.updateContent(no: targetNo, content: changeContent);
@@ -166,6 +156,22 @@ class EventHandler {
     int row = await dbHelper.delete(no: targetNo);
     await _fetch();
     debugPrint('# delete $row rows, no: $targetNo');
+  }
+
+  Future<void> toggleStatus(int targetNo, Status targetStatus) async {
+    Status changeStatus =
+        (targetStatus == Status.none ? Status.done : Status.none);
+    int row = await dbHelper.updateStatus(no: targetNo, status: changeStatus);
+    await _fetch();
+    debugPrint(
+        '# update $row rows, no: $targetNo, status: $targetStatus -> $changeStatus');
+  }
+
+  Future<void> togglePinning(int targetNo, bool isPinning) async {
+    int row = await dbHelper.updatePinning(no: targetNo, isPinning: !isPinning);
+    await _fetch();
+    debugPrint(
+        '# update $row rows, no: $targetNo, change pinning: ${!isPinning}');
   }
 }
 
@@ -212,8 +218,11 @@ class _TodoListViewState extends State<TodoListView> {
             },
           ),
           child: ListTile(
+            leading: _todo.isPinning
+                ? Icon(Icons.star, color: Colors.amberAccent[400])
+                : null,
             title: Text(
-              '<${widget.mode}> ${targetNo}, ${_todo.content}',
+              '<${widget.mode}> ${targetNo}, ${_todo.content}, ${_todo.isPinning}',
               style: TextStyle(
                 color: _todo.status == Status.done
                     ? Colors.grey[350]
@@ -235,7 +244,7 @@ class _TodoListViewState extends State<TodoListView> {
               ),
               color: Colors.amberAccent,
               onTap: () {
-                debugPrint('on star tap');
+                widget.handler.togglePinning(targetNo, _todo.isPinning);
               },
             ),
             SlideAction(
@@ -361,19 +370,21 @@ class Todo {
   int no;
   String content;
   Status status;
+  bool isPinning;
   DateTime dueDttm;
 
-  Todo({this.no, this.content, this.status, this.dueDttm});
+  Todo({this.no, this.content, this.status, this.isPinning, this.dueDttm});
 
   Todo.add(String content) {
     this.content = content;
     this.status = Status.none;
+    this.isPinning = false;
     this.dueDttm = DateTime.now();
   }
 
   @override
   String toString() {
-    return 'Todo{no: $no, content: $content, status: $status, dueDttm: $dueDttm}';
+    return 'Todo{no: $no, content: $content, status: $status, isPinning: $isPinning, dueDttm: $dueDttm}';
   }
 
   // convert type: text, integer, integer
@@ -382,6 +393,7 @@ class Todo {
       if (no != null) 'no': no,
       if (content != null) 'content': content,
       if (status != null) 'status': status.index,
+      if (isPinning != null) 'isPinning': isPinning ? 1 : 0,
       if (dueDttm != null) 'due_dttm': dueDttm.millisecondsSinceEpoch,
     };
   }
@@ -391,6 +403,7 @@ class Todo {
     no = map['no'];
     content = map['content'];
     status = Status.values[map['status']];
+    isPinning = (map['isPinning'] == 1);
     dueDttm = DateTime.fromMillisecondsSinceEpoch(map['due_dttm']);
   }
 }
@@ -405,7 +418,7 @@ class DBHelper {
   Future<Database> open() async {
     debugPrint('--> open database');
     String path = join(await getDatabasesPath(), 'todo.db');
-//    await deleteDatabase(_path);
+    await deleteDatabase(path);
     _database = await openDatabase(
       path,
       version: 1,
@@ -416,6 +429,7 @@ class DBHelper {
             no integer primary key autoincrement
             ,content text not null
             ,status integer default 0
+            ,isPinning integer default 0
             ,due_dttm integer default (datetime('now', 'localtime'))
           )''',
         );
@@ -426,7 +440,8 @@ class DBHelper {
   Future<void> close() async => _database.close();
 
   Future<List<Todo>> select() async {
-    List<Map<String, dynamic>> _todoList = await _database.query('t_todo');
+    List<Map<String, dynamic>> _todoList =
+        await _database.query('t_todo', orderBy: 'isPinning desc, no asc');
     return List.generate(_todoList.length, (i) {
       Map<String, dynamic> _map = _todoList[i];
       return Todo.fromMap(_map);
@@ -438,15 +453,22 @@ class DBHelper {
     return await _database.insert('t_todo', _td.toMap());
   }
 
+  Future<int> updateContent(
+      {@required int no, @required String content}) async {
+    Todo t = Todo(content: content);
+    return await _database
+        .update('t_todo', t.toMap(), where: 'no = ?', whereArgs: [no]);
+  }
+
   Future<int> updateStatus({@required int no, @required Status status}) async {
     Todo t = Todo(status: status);
     return await _database
         .update('t_todo', t.toMap(), where: 'no = ?', whereArgs: [no]);
   }
 
-  Future<int> updateContent(
-      {@required int no, @required String content}) async {
-    Todo t = Todo(content: content);
+  Future<int> updatePinning(
+      {@required int no, @required bool isPinning}) async {
+    Todo t = Todo(isPinning: isPinning);
     return await _database
         .update('t_todo', t.toMap(), where: 'no = ?', whereArgs: [no]);
   }
