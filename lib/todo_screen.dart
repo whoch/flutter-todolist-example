@@ -34,13 +34,15 @@ class _TodoScreenState extends State<TodoScreen> {
   Mode _mode;
   EventHandler _handler;
   List<Todo> _todolist = <Todo>[];
+  TextEditingController _addController;
 
   @override
   void initState() {
     _mode = Mode.init;
     _handler = EventHandler(_todoListHandler);
+    _addController = TextEditingController();
     initDatabase();
-    debugPrint('--> init State!');
+    debugPrint('--> init TodoScreen!');
   }
 
   void initDatabase() async {
@@ -55,7 +57,8 @@ class _TodoScreenState extends State<TodoScreen> {
   @override
   void dispose() {
     dbHelper.close();
-    debugPrint('---> dispose database');
+    _addController.dispose();
+    debugPrint('---> dispose TodoScreen');
   }
 
   @override
@@ -81,20 +84,29 @@ class _TodoScreenState extends State<TodoScreen> {
           showModalBottomSheet(
             context: context,
             builder: (BuildContext context) {
+              _addController.clear();
               return Container(
                 padding: EdgeInsets.only(
                     bottom: MediaQuery.of(context).viewInsets.bottom),
                 child: TextField(
+                  controller: _addController,
                   autofocus: true,
                   decoration: InputDecoration(
                     hintText: '무엇을 할까요?',
-                    suffixIcon: Icon(Icons.add),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        Icons.add,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () {
+                        _add(_addController.text);
+                        Navigator.pop(context);
+                      },
+                    ),
                     border: InputBorder.none,
                   ),
                   onSubmitted: (String content) {
-                    if (content.length > 0) {
-                      _handler.add(content);
-                    }
+                    _add(content);
                     Navigator.pop(context);
                   },
                 ),
@@ -109,6 +121,12 @@ class _TodoScreenState extends State<TodoScreen> {
         backgroundColor: Colors.white,
       ),
     );
+  }
+
+  void _add(String content) {
+    if (content.length > 0) {
+      _handler.add(content);
+    }
   }
 
   void _todoListHandler(List<Todo> todoList) {
