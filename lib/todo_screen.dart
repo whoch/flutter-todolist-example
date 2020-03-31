@@ -185,8 +185,9 @@ class _TodoListViewState extends State<TodoListView> {
           showAllActionsThreshold: 0.3,
           dismissal: SlidableDismissal(
             child: SlidableDrawerDismissal(),
-            onWillDismiss: (actionType) {
-              return actionType == SlideActionType.secondary;
+            dismissThresholds: <SlideActionType, double>{
+              SlideActionType.primary: 1.0, // >=1.0 prevents a drag
+              SlideActionType.secondary: 0.3,
             },
             onDismissed: (actionType) {
               widget.handler.delete(targetNo);
@@ -244,7 +245,6 @@ class _TodoListViewState extends State<TodoListView> {
                 Icons.delete,
                 color: Colors.white,
               ),
-              closeOnTap: true,
               onTap: () {
                 widget.handler.delete(targetNo);
               },
