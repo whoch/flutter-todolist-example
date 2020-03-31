@@ -79,25 +79,26 @@ class _TodoScreenState extends State<TodoScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           showModalBottomSheet(
-              context: context,
-              builder: (BuildContext context) {
-                return Container(
-                  padding: EdgeInsets.only(
-                      bottom: MediaQuery.of(context).viewInsets.bottom),
-                  child: TextField(
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: '무엇을 할까요?',
-                      suffixIcon: Icon(Icons.add),
-                      border: InputBorder.none,
-                    ),
-                    onSubmitted: (String content) {
-                      _handler.add(content);
-                      Navigator.pop(context);
-                    },
+            context: context,
+            builder: (BuildContext context) {
+              return Container(
+                padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom),
+                child: TextField(
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: '무엇을 할까요?',
+                    suffixIcon: Icon(Icons.add),
+                    border: InputBorder.none,
                   ),
-                );
-              });
+                  onSubmitted: (String content) {
+                    _handler.add(content);
+                    Navigator.pop(context);
+                  },
+                ),
+              );
+            },
+          );
         },
         child: Icon(
           Icons.add,
@@ -176,7 +177,7 @@ class _TodoListViewState extends State<TodoListView> {
                 ? Icon(Icons.star, color: Colors.amberAccent[400])
                 : null,
             title: Text(
-              '<${widget.mode}> ${targetNo}, ${_todo.content}, ${_todo.isPinning}',
+              '${_todo.content}',
               style: TextStyle(
                 color: _todo.status == Status.done
                     ? Colors.grey[350]
