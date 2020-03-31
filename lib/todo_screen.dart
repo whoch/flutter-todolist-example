@@ -92,7 +92,8 @@ class _TodoScreenState extends State<TodoScreen> {
                   controller: _addController,
                   autofocus: true,
                   decoration: InputDecoration(
-                    hintText: '무엇을 할까요?',
+                    hintText: '입력해 주세요',
+                    contentPadding: EdgeInsets.all(10),
                     suffixIcon: IconButton(
                       icon: Icon(
                         Icons.add,
