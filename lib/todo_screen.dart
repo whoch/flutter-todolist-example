@@ -128,53 +128,6 @@ class AppBarBottomView extends StatelessWidget {
   }
 }
 
-class EventHandler {
-  final ValueChanged<List<Todo>> _handler;
-
-  EventHandler(this._handler);
-
-  Future<void> _fetch() async {
-    List<Todo> result = await dbHelper.select();
-    _handler(result);
-  }
-
-  Future<void> add(String content) async {
-    int row = await dbHelper.insert(content: content);
-    await _fetch();
-    debugPrint('# insert $row rows, content: $content');
-  }
-
-  Future<void> modify(int targetNo, String changeContent) async {
-    int row =
-        await dbHelper.updateContent(no: targetNo, content: changeContent);
-    await _fetch();
-    debugPrint(
-        '# update $row rows, no: $targetNo, change content: $changeContent');
-  }
-
-  Future<void> delete(int targetNo) async {
-    int row = await dbHelper.delete(no: targetNo);
-    await _fetch();
-    debugPrint('# delete $row rows, no: $targetNo');
-  }
-
-  Future<void> toggleStatus(int targetNo, Status targetStatus) async {
-    Status changeStatus =
-        (targetStatus == Status.none ? Status.done : Status.none);
-    int row = await dbHelper.updateStatus(no: targetNo, status: changeStatus);
-    await _fetch();
-    debugPrint(
-        '# update $row rows, no: $targetNo, status: $targetStatus -> $changeStatus');
-  }
-
-  Future<void> togglePinning(int targetNo, bool isPinning) async {
-    int row = await dbHelper.updatePinning(no: targetNo, isPinning: !isPinning);
-    await _fetch();
-    debugPrint(
-        '# update $row rows, no: $targetNo, change pinning: ${!isPinning}');
-  }
-}
-
 class TodoListView extends StatefulWidget {
   final Mode mode;
   final EventHandler handler;
@@ -366,6 +319,53 @@ class _EditModeViewState extends State<EditModeView> {
   }
 }
 
+class EventHandler {
+  final ValueChanged<List<Todo>> _handler;
+
+  EventHandler(this._handler);
+
+  Future<void> _fetch() async {
+    List<Todo> result = await dbHelper.select();
+    _handler(result);
+  }
+
+  Future<void> add(String content) async {
+    int row = await dbHelper.insert(content: content);
+    await _fetch();
+    debugPrint('# insert $row rows, content: $content');
+  }
+
+  Future<void> modify(int targetNo, String changeContent) async {
+    int row =
+        await dbHelper.updateContent(no: targetNo, content: changeContent);
+    await _fetch();
+    debugPrint(
+        '# update $row rows, no: $targetNo, change content: $changeContent');
+  }
+
+  Future<void> delete(int targetNo) async {
+    int row = await dbHelper.delete(no: targetNo);
+    await _fetch();
+    debugPrint('# delete $row rows, no: $targetNo');
+  }
+
+  Future<void> toggleStatus(int targetNo, Status targetStatus) async {
+    Status changeStatus =
+        (targetStatus == Status.none ? Status.done : Status.none);
+    int row = await dbHelper.updateStatus(no: targetNo, status: changeStatus);
+    await _fetch();
+    debugPrint(
+        '# update $row rows, no: $targetNo, status: $targetStatus -> $changeStatus');
+  }
+
+  Future<void> togglePinning(int targetNo, bool isPinning) async {
+    int row = await dbHelper.updatePinning(no: targetNo, isPinning: !isPinning);
+    await _fetch();
+    debugPrint(
+        '# update $row rows, no: $targetNo, change pinning: ${!isPinning}');
+  }
+}
+
 class Todo {
   int no;
   String content;
@@ -418,7 +418,7 @@ class DBHelper {
   Future<Database> open() async {
     debugPrint('--> open database');
     String path = join(await getDatabasesPath(), 'todo.db');
-    await deleteDatabase(path);
+//    await deleteDatabase(path);
     _database = await openDatabase(
       path,
       version: 1,
