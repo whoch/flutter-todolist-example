@@ -10,7 +10,7 @@ enum Mode { init, add, edit }
 enum Status { none, done, pass }
 final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
-void showSnackBar(BuildContext context, String text) {
+void showSnackBar(String text) {
   scaffoldKey.currentState.showSnackBar(SnackBar(content: Text(text)));
 }
 
@@ -92,7 +92,9 @@ class _TodoScreenState extends State<TodoScreen> {
                     border: InputBorder.none,
                   ),
                   onSubmitted: (String content) {
-                    _handler.add(content);
+                    if (content.length > 0) {
+                      _handler.add(content);
+                    }
                     Navigator.pop(context);
                   },
                 ),
@@ -169,7 +171,6 @@ class _TodoListViewState extends State<TodoListView> {
             },
             onDismissed: (actionType) {
               widget.handler.delete(targetNo);
-              showSnackBar(context, '삭제 완료');
             },
           ),
           child: ListTile(
@@ -227,7 +228,6 @@ class _TodoListViewState extends State<TodoListView> {
               closeOnTap: true,
               onTap: () {
                 widget.handler.delete(targetNo);
-                showSnackBar(context, '삭제 완료');
               },
             )
           ],
@@ -297,8 +297,9 @@ class _EditModeViewState extends State<EditModeView> {
                 FlatButton(
                   child: Text('저장'),
                   onPressed: () {
-                    widget.handler.modify(widget.todo.no, _controller.text);
-                    showSnackBar(context, '수정 완료');
+                    if (_controller.text.length > 0) {
+                      widget.handler.modify(widget.todo.no, _controller.text);
+                    }
                     Navigator.pop(context);
                   },
                 ),
@@ -341,6 +342,7 @@ class EventHandler {
     int row =
         await dbHelper.updateContent(no: targetNo, content: changeContent);
     await _fetch();
+    showSnackBar('수정 완료');
     debugPrint(
         '# update $row rows, no: $targetNo, change content: $changeContent');
   }
@@ -348,6 +350,7 @@ class EventHandler {
   Future<void> delete(int targetNo) async {
     int row = await dbHelper.delete(no: targetNo);
     await _fetch();
+    showSnackBar('삭제 완료');
     debugPrint('# delete $row rows, no: $targetNo');
   }
 
