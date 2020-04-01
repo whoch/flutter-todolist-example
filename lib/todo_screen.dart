@@ -420,7 +420,7 @@ class Todo {
       if (content != null) 'content': content,
       if (status != null) 'status': status.index,
       if (isPinning != null) 'isPinning': isPinning ? 1 : 0,
-      if (dueDttm != null) 'due_dttm': dueDttm.millisecondsSinceEpoch,
+      if (dueDttm != null) 'due_dttm': dueDttm.millisecondsSinceEpoch ~/ 1000,
     };
   }
 
@@ -430,7 +430,7 @@ class Todo {
     content = map['content'];
     status = Status.values[map['status']];
     isPinning = (map['isPinning'] == 1);
-    dueDttm = DateTime.fromMillisecondsSinceEpoch(map['due_dttm']);
+    dueDttm = DateTime.fromMillisecondsSinceEpoch(map['due_dttm'] * 1000);
   }
 }
 
@@ -444,7 +444,7 @@ class DBHelper {
   Future<Database> open() async {
     debugPrint('--> open database');
     String path = join(await getDatabasesPath(), 'todo.db');
-//    await deleteDatabase(path);
+    await deleteDatabase(path);
     _database = await openDatabase(
       path,
       version: 1,
@@ -456,7 +456,7 @@ class DBHelper {
             ,content text not null
             ,status integer default 0
             ,isPinning integer default 0
-            ,due_dttm integer default (datetime('now', 'localtime'))
+            ,due_dttm integer default (cast(strftime('%s', 'now') as int))
           )''',
         );
       },
