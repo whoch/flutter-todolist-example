@@ -78,7 +78,9 @@ class _TodoScreenState extends State<TodoScreen> {
         centerTitle: true,
       ),
       resizeToAvoidBottomInset: false,
-      body: TodoListView(_mode, _handler, _todolist),
+      body: SafeArea(
+        child: TodoListView(_mode, _handler, _todolist),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           showModalBottomSheet(
