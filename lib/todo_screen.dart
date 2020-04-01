@@ -444,7 +444,7 @@ class DBHelper {
   Future<Database> open() async {
     debugPrint('--> open database');
     String path = join(await getDatabasesPath(), 'todo.db');
-    await deleteDatabase(path);
+//    await deleteDatabase(path);
     _database = await openDatabase(
       path,
       version: 1,
@@ -459,6 +459,15 @@ class DBHelper {
             ,due_dttm integer default (strftime('%s', 'now'))
           )''',
         );
+        List<Todo> guides = <Todo>[];
+        guides.add(Todo(no: 1, content: '가이드', isPinning: true));
+        guides.add(Todo(no: 2, content: '추가@ 오른쪽 하단 +아이콘 터치!'));
+        guides.add(Todo(no: 3, content: '삭제@ 왼쪽<<<으로 슬라이드 해보세요!'));
+        guides.add(Todo(no: 4, content: '수정@ 오른쪽>>>으로 슬라이드 해보세요!'));
+        guides.add(Todo(no: 5, content: '고정@ 오른쪽>>>으로 슬라이드 해보세요!'));
+        Batch batch = db.batch();
+        guides.forEach((guide) => batch.insert('t_todo', guide.toMap()));
+        batch.commit();
       },
     );
   }
