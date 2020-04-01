@@ -1,4 +1,3 @@
-import 'package:flare_splash_screen/flare_splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:todolist/todo_screen.dart';
 
@@ -13,12 +12,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: SplashScreen.navigate(
-        name: 'intro.flr',
-        next: (_) => TodoScreen(),
-        until: () => Future.delayed(Duration(seconds: 5)),
-        startAnimation: '1',
-      ),
+      home: TodoScreen(),
     );
   }
 }
