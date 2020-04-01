@@ -456,7 +456,7 @@ class DBHelper {
             ,content text not null
             ,status integer default 0
             ,isPinning integer default 0
-            ,due_dttm integer default (cast(strftime('%s', 'now') as int))
+            ,due_dttm integer default (strftime('%s', 'now'))
           )''',
         );
       },
